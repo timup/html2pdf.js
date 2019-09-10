@@ -42,7 +42,7 @@ Worker.prototype.toContainer = function toContainer() {
     var root = this.prop.container;
     var pxPageHeight =
       this.opt["html2canvas"] && this.opt["html2canvas"]["width"]
-        ? this.opt["html2canvas"]["width"] * this.prop.pageSize.inner.ratio
+        ? Math.ceil(this.opt["html2canvas"]["width"] * this.prop.pageSize.inner.ratio)
         : this.prop.pageSize.inner.px.height;
 
     // Check all requested modes.
