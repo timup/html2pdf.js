@@ -153,6 +153,7 @@ Worker.prototype.toContainer = function toContainer() {
       var rootChild = this.prop.container.firstElementChild;
       var elements = rootChild.querySelectorAll("*");
       var containers = [];
+      var overlays = [];
 
       while (root.clientHeight > 20000) {
 
@@ -173,22 +174,24 @@ Worker.prototype.toContainer = function toContainer() {
         var newOverlay = createElement('div',   { className: 'html2pdf__overlay', style: overlayCSS });
         var newContainer =  createElement('div', { className: 'html2pdf__container', style: containerCSS });
         
-        newOverlay.appendChild(newContainer)
-        document.body.appendChild(newOverlay)
+        newOverlay.appendChild(newContainer);
+        document.body.appendChild(newOverlay);
 
         for (let index = 0; index < elements.length; index++) {
           // move elements, starting with first, 
           newContainer.appendChild(elements[index]);
           // to newContainer until newContainer > 20000px height
           if (newContainer.clientHeight > 20000) {
-            containers.unshift(newContainer)
+            containers.unshift(newContainer);
             break;
           }
         }
         // compile all containers into this.props.containers 
         // as [newContainer, newContainer2, originalContainer]
-        containers.push(root)
+        containers.push(root);
+        overlays.push(newOverlay);
         this.prop.containers = containers;
+        this.prop.overlays = [...overlays, this.prop.overlay];
       }
       // proceed with canvas creation... create canvases
     }

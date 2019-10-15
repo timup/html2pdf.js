@@ -1348,8 +1348,11 @@ Worker.template = {
   prop: {
     src: null,
     container: null,
+    containers: null,
     overlay: null,
+    overlays: null,
     canvas: null,
+    canvases: null,
     img: null,
     pdf: null,
     pageSize: null
@@ -1463,14 +1466,32 @@ Worker.prototype.toCanvas = function toCanvas() {
     var options = _extends({}, this.opt.html2canvas);
     delete options.onrendered;
 
-    return html2canvas(this.prop.container, options);
+    if (this.prop.containers === null) {
+      return html2canvas(this.prop.container, options);
+    } else {
+      var canvases = [];
+      for (var index = 0; index < this.prop.containers.length; index++) {
+        var partialCanvas = html2canvas(this.prop.containers[index], options);
+        canvases.push(partialCanvas);
+      }
+      return Promise$1.all(canvases);
+    }
   }).then(function toCanvas_post(canvas) {
     // Handle old-fashioned 'onrendered' argument.
     var onRendered = this.opt.html2canvas.onrendered || function () {};
     onRendered(canvas);
 
-    this.prop.canvas = canvas;
-    document.body.removeChild(this.prop.overlay);
+    if (canvas.length) {
+      // save to canvases
+      this.prop.canvases = canvas;
+      //  remove overlays
+      this.prop.overlays.forEach(function (overlay) {
+        overlay.parentNode.removeChild(overlay);
+      });
+    } else {
+      this.prop.canvas = canvas;
+      document.body.removeChild(this.prop.overlay);
+    }
   });
 };
 
@@ -1498,45 +1519,56 @@ Worker.prototype.toPdf = function toPdf() {
   return this.thenList(prereqs).then(function toPdf_main() {
     // Create local copies of frequently used properties.
     var canvas = this.prop.canvas;
-    var opt = this.opt;
+    var canvases = this.prop.canvases;
 
-    // Calculate the number of pages.
-    var pxFullHeight = canvas.height;
-    var pxPageHeight = Math.floor(canvas.width * this.prop.pageSize.inner.ratio);
-    var nPages = Math.ceil(pxFullHeight / pxPageHeight);
-
-    // Define pageHeight separately so it can be trimmed on the final page.
-    var pageHeight = this.prop.pageSize.inner.height;
-
-    // Create a one-page canvas to split up the full image.
-    var pageCanvas = document.createElement('canvas');
-    var pageCtx = pageCanvas.getContext('2d');
-    pageCanvas.width = canvas.width;
-    pageCanvas.height = pxPageHeight;
-
-    // Initialize the PDF.
-    this.prop.pdf = this.prop.pdf || new jsPDF(opt.jsPDF);
-
-    for (var page = 0; page < nPages; page++) {
-      // Trim the final page to reduce file size.
-      if (page === nPages - 1 && pxFullHeight % pxPageHeight !== 0) {
-        pageCanvas.height = pxFullHeight % pxPageHeight;
-        pageHeight = pageCanvas.height * this.prop.pageSize.inner.width / pageCanvas.width;
+    if (canvas) {
+      this.pdfFromCanvas(canvas);
+    } else if (canvases) {
+      for (var index = 0; index < canvases.length; index++) {
+        this.pdfFromCanvas(canvases[index]);
       }
-
-      // Display the page.
-      var w = pageCanvas.width;
-      var h = pageCanvas.height;
-      pageCtx.fillStyle = 'white';
-      pageCtx.fillRect(0, 0, w, h);
-      pageCtx.drawImage(canvas, 0, page * pxPageHeight, w, h, 0, 0, w, h);
-
-      // Add the page to the PDF.
-      if (page) this.prop.pdf.addPage();
-      var imgData = pageCanvas.toDataURL('image/' + opt.image.type, opt.image.quality);
-      this.prop.pdf.addImage(imgData, opt.image.type, opt.margin[1], opt.margin[0], this.prop.pageSize.inner.width, pageHeight);
     }
   });
+};
+
+Worker.prototype.pdfFromCanvas = function pdfFromCanvas(canvas) {
+  var opt = this.opt;
+  // Calculate the number of pages.
+  var pxFullHeight = canvas.height;
+  var pxPageHeight = Math.floor(canvas.width * this.prop.pageSize.inner.ratio);
+  var nPages = Math.ceil(pxFullHeight / pxPageHeight);
+
+  // Define pageHeight separately so it can be trimmed on the final page.
+  var pageHeight = this.prop.pageSize.inner.height;
+
+  // Create a one-page canvas to split up the full image.
+  var pageCanvas = document.createElement('canvas');
+  var pageCtx = pageCanvas.getContext('2d');
+  pageCanvas.width = canvas.width;
+  pageCanvas.height = pxPageHeight;
+
+  // Initialize the PDF.
+  this.prop.pdf = this.prop.pdf || new jsPDF(opt.jsPDF);
+
+  for (var page = 0; page < nPages; page++) {
+    // Trim the final page to reduce file size.
+    if (page === nPages - 1 && pxFullHeight % pxPageHeight !== 0) {
+      pageCanvas.height = pxFullHeight % pxPageHeight;
+      pageHeight = pageCanvas.height * this.prop.pageSize.inner.width / pageCanvas.width;
+    }
+
+    // Display the page.
+    var w = pageCanvas.width;
+    var h = pageCanvas.height;
+    pageCtx.fillStyle = 'white';
+    pageCtx.fillRect(0, 0, w, h);
+    pageCtx.drawImage(canvas, 0, page * pxPageHeight, w, h, 0, 0, w, h);
+
+    // Add the page to the PDF.
+    if (page) this.prop.pdf.addPage();
+    var imgData = pageCanvas.toDataURL('image/' + opt.image.type, opt.image.quality);
+    this.prop.pdf.addImage(imgData, opt.image.type, opt.margin[1], opt.margin[0], this.prop.pageSize.inner.width, pageHeight);
+  }
 };
 
 /* ----- OUTPUT / SAVE ----- */
@@ -2043,6 +2075,7 @@ Worker.prototype.toContainer = function toContainer() {
       var rootChild = this.prop.container.firstElementChild;
       var elements = rootChild.querySelectorAll("*");
       var containers = [];
+      var overlays = [];
 
       while (root.clientHeight > 20000) {
 
@@ -2078,7 +2111,9 @@ Worker.prototype.toContainer = function toContainer() {
         // compile all containers into this.props.containers 
         // as [newContainer, newContainer2, originalContainer]
         containers.push(root);
+        overlays.push(newOverlay);
         this.prop.containers = containers;
+        this.prop.overlays = [].concat(overlays, [this.prop.overlay]);
       }
       // proceed with canvas creation... create canvases
     }
