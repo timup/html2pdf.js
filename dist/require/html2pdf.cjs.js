@@ -2033,6 +2033,53 @@ Worker.prototype.toContainer = function toContainer() {
         el.parentNode.insertBefore(pad, el.nextSibling);
       }
     });
+
+    if (root.clientHeight <= 20000) {
+      return;
+    } else {
+      // if the container is > 20000px height 
+      var rootChild = this.prop.container.firstElementChild;
+      var elements = rootChild.querySelectorAll("*");
+      var containers = [];
+
+      while (root.clientHeight > 20000) {
+
+        var overlayCSS = {
+          position: 'fixed', overflow: 'hidden', zIndex: 1000,
+          left: 0, right: 0, bottom: 0, top: 0,
+          backgroundColor: 'rgba(0,0,0,0.8)'
+        };
+        var containerCSS = {
+          position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
+          left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
+          backgroundColor: 'white'
+        };
+
+        // Set the overlay to hidden (could be changed in the future to provide a print preview).
+        overlayCSS.opacity = 0;
+
+        var newOverlay = createElement('div', { className: 'html2pdf__overlay', style: overlayCSS });
+        var newContainer = createElement('div', { className: 'html2pdf__container', style: containerCSS });
+
+        newOverlay.appendChild(newContainer);
+        document.body.appendChild(newOverlay);
+
+        for (var index = 0; index < elements.length; index++) {
+          // move elements, starting with first, 
+          newContainer.appendChild(elements[index]);
+          // to newContainer until newContainer > 20000px height
+          if (newContainer.clientHeight > 20000) {
+            containers.unshift(newContainer);
+            break;
+          }
+        }
+        // compile all containers into this.props.containers 
+        // as [newContainer, newContainer2, originalContainer]
+        containers.push(root);
+        this.prop.containers = containers;
+      }
+      // proceed with canvas creation... create canvases
+    }
   });
 };
 
