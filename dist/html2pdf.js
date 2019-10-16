@@ -1521,22 +1521,29 @@ Worker.prototype.toPdf = function toPdf() {
     var canvas = this.prop.canvas;
     var canvases = this.prop.canvases;
 
-    if (canvas) {
-      this.pdfFromCanvas(canvas);
-    } else if (canvases) {
+    if (canvases) {
+      console.log("multiple canvases");
       for (var index = 0; index < canvases.length; index++) {
         this.pdfFromCanvas(canvases[index]);
       }
+    } else {
+      console.log("single canvas");
+      this.pdfFromCanvas(canvas);
     }
   });
 };
 
 Worker.prototype.pdfFromCanvas = function pdfFromCanvas(canvas) {
   var opt = this.opt;
+
   // Calculate the number of pages.
   var pxFullHeight = canvas.height;
   var pxPageHeight = Math.floor(canvas.width * this.prop.pageSize.inner.ratio);
   var nPages = Math.ceil(pxFullHeight / pxPageHeight);
+
+  console.log("pxFullHeight:", pxFullHeight);
+  console.log("pxPageHeight:", pxPageHeight);
+  console.log("nPages:", nPages);
 
   // Define pageHeight separately so it can be trimmed on the final page.
   var pageHeight = this.prop.pageSize.inner.height;
@@ -1560,9 +1567,25 @@ Worker.prototype.pdfFromCanvas = function pdfFromCanvas(canvas) {
     // Display the page.
     var w = pageCanvas.width;
     var h = pageCanvas.height;
+
+    console.log("canvas width:", w);
+    console.log("canvas height:", h);
+
     pageCtx.fillStyle = 'white';
     pageCtx.fillRect(0, 0, w, h);
+
+    // pageCtx.fillStyle = 'green';
+    // pageCtx.beginPath();
+    // pageCtx.moveTo(75, 50);
+    // pageCtx.lineTo(100, 75);
+    // pageCtx.lineTo(100, 25);
+    // pageCtx.fill();
+
+    // debugger;
+
     pageCtx.drawImage(canvas, 0, page * pxPageHeight, w, h, 0, 0, w, h);
+
+    // this.prop.pdf.addPage();
 
     // Add the page to the PDF.
     if (page) this.prop.pdf.addPage();
@@ -2068,16 +2091,16 @@ Worker.prototype.toContainer = function toContainer() {
       }
     });
 
-    if (root.clientHeight <= 20000) {
+    if (root.clientHeight <= 18000) {
       return;
     } else {
-      // if the container is > 20000px height 
+      // if the container is > 18000px height 
       var rootChild = this.prop.container.firstElementChild;
       var elements = rootChild.querySelectorAll("*");
       var containers = [];
       var overlays = [];
 
-      while (root.clientHeight > 20000) {
+      while (root.clientHeight > 18000) {
 
         var overlayCSS = {
           position: 'fixed', overflow: 'hidden', zIndex: 1000,
@@ -2102,8 +2125,8 @@ Worker.prototype.toContainer = function toContainer() {
         for (var index = 0; index < elements.length; index++) {
           // move elements, starting with first, 
           newContainer.appendChild(elements[index]);
-          // to newContainer until newContainer > 20000px height
-          if (newContainer.clientHeight > 20000) {
+          // to newContainer until newContainer > 18000px height
+          if (newContainer.clientHeight > 18000) {
             containers.unshift(newContainer);
             break;
           }

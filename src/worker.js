@@ -199,23 +199,30 @@ Worker.prototype.toPdf = function toPdf() {
     // Create local copies of frequently used properties.
     var canvas = this.prop.canvas;
     var canvases = this.prop.canvases;
-
-    if (canvas) {
-      this.pdfFromCanvas(canvas);
-    } else if (canvases) {
+      
+   if (canvases) {
+      console.log("multiple canvases")
       for (let index = 0; index < canvases.length; index++) {
-        this.pdfFromCanvas(canvases[index]);
+        this.pdfFromCanvas(canvases[index])
       }
+    } else {
+      console.log("single canvas")
+      this.pdfFromCanvas(canvas);
     }
   });
 };
 
 Worker.prototype.pdfFromCanvas = function pdfFromCanvas(canvas) {
   var opt = this.opt
+
   // Calculate the number of pages.
   var pxFullHeight = canvas.height;
   var pxPageHeight = Math.floor(canvas.width * this.prop.pageSize.inner.ratio);
   var nPages = Math.ceil(pxFullHeight / pxPageHeight);
+
+  console.log("pxFullHeight:", pxFullHeight)
+  console.log("pxPageHeight:", pxPageHeight)
+  console.log("nPages:", nPages)
 
   // Define pageHeight separately so it can be trimmed on the final page.
   var pageHeight = this.prop.pageSize.inner.height;
@@ -239,8 +246,20 @@ Worker.prototype.pdfFromCanvas = function pdfFromCanvas(canvas) {
     // Display the page.
     var w = pageCanvas.width;
     var h = pageCanvas.height;
+
+    console.log("canvas width:", w)
+    console.log("canvas height:", h)
+    
     pageCtx.fillStyle = 'white';
     pageCtx.fillRect(0, 0, w, h);
+
+    // pageCtx.fillStyle = 'green';
+    // pageCtx.beginPath();
+    // pageCtx.moveTo(75, 50);
+    // pageCtx.lineTo(100, 75);
+    // pageCtx.lineTo(100, 25);
+    // pageCtx.fill();
+
     pageCtx.drawImage(canvas, 0, page*pxPageHeight, w, h, 0, 0, w, h);
 
     // Add the page to the PDF.

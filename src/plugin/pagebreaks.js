@@ -146,16 +146,16 @@ Worker.prototype.toContainer = function toContainer() {
       }
     });
 
-    if (root.clientHeight <= 20000) {
+    if (root.clientHeight <= 18000) {
       return;
     } else {
-      // if the container is > 20000px height 
+      // if the container is > 18000px height 
       var rootChild = this.prop.container.firstElementChild;
       var elements = rootChild.querySelectorAll("*");
       var containers = [];
       var overlays = [];
 
-      while (root.clientHeight > 20000) {
+      while (root.clientHeight > 18000) {
 
         var overlayCSS = {
           position: 'fixed', overflow: 'hidden', zIndex: 1000,
@@ -180,8 +180,8 @@ Worker.prototype.toContainer = function toContainer() {
         for (let index = 0; index < elements.length; index++) {
           // move elements, starting with first, 
           newContainer.appendChild(elements[index]);
-          // to newContainer until newContainer > 20000px height
-          if (newContainer.clientHeight > 20000) {
+          // to newContainer until newContainer > 18000px height
+          if (newContainer.clientHeight > 18000) {
             containers.unshift(newContainer);
             break;
           }
