@@ -7305,6 +7305,50 @@ var _extends = Object.assign || function (target) {
   return target;
 };
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var toConsumableArray = function (arr) {
+  if (Array.isArray(arr)) {
+    for (var i = 0, arr2 = Array(arr.length); i < arr.length; i++) arr2[i] = arr[i];
+
+    return arr2;
+  } else {
+    return Array.from(arr);
+  }
+};
+
 // Determine the type of a variable/object.
 var objType = function objType(obj) {
   var type = typeof obj === 'undefined' ? 'undefined' : _typeof(obj);
@@ -8676,6 +8720,7 @@ Worker.prototype.toContainer = function toContainer() {
       left: 0, right: 0, bottom: 0, top: 0,
       backgroundColor: 'rgba(0,0,0,0.8)'
     };
+    console.log("original container CSS width:", this.prop.pageSize.inner.width);
     var containerCSS = {
       position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
       left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
@@ -8711,8 +8756,12 @@ Worker.prototype.toCanvas = function toCanvas() {
       return html2canvas$1(this.prop.container, options);
     } else {
       var canvases = [];
-      for (var index = 0; index < this.prop.containers.length; index++) {
-        var partialCanvas = html2canvas$1(this.prop.containers[index], options);
+      var cleanContainers = this.prop.containers.filter(function (container) {
+        return container;
+      });
+      for (var index = 0; index < cleanContainers.length; index++) {
+        console.log("html2canvas options:", options);
+        var partialCanvas = html2canvas$1(cleanContainers[index], options);
         canvases.push(partialCanvas);
       }
       return Promise$1.all(canvases);
@@ -8726,7 +8775,10 @@ Worker.prototype.toCanvas = function toCanvas() {
       // save to canvases
       this.prop.canvases = canvas;
       //  remove overlays
-      this.prop.overlays.forEach(function (overlay) {
+      var cleanOverlays = this.prop.overlays.filter(function (overlay) {
+        return overlay;
+      });
+      cleanOverlays.forEach(function (overlay) {
         overlay.parentNode.removeChild(overlay);
       });
     } else {
@@ -8822,11 +8874,7 @@ Worker.prototype.pdfFromCanvas = function pdfFromCanvas(canvas) {
     // pageCtx.lineTo(100, 25);
     // pageCtx.fill();
 
-    // debugger;
-
     pageCtx.drawImage(canvas, 0, page * pxPageHeight, w, h, 0, 0, w, h);
-
-    // this.prop.pdf.addPage();
 
     // Add the page to the PDF.
     if (page) this.prop.pdf.addPage();
@@ -9332,56 +9380,94 @@ Worker.prototype.toContainer = function toContainer() {
       }
     });
 
-    if (root.clientHeight <= 18000) {
+    if (root.clientHeight <= 20000) {
       return;
     } else {
       // if the container is > 18000px height 
-      var rootChild = this.prop.container.firstElementChild;
-      var elements = rootChild.querySelectorAll("*");
+      var rootChild = root.firstElementChild;
+      var rootDescendants = rootChild.childNodes;
       var containers = [];
       var overlays = [];
 
-      while (root.clientHeight > 18000) {
+      if ([].concat(toConsumableArray(rootDescendants)).some(function (node) {
+        return node.clientHeight > 20000;
+      })) {
+        // split child nodes into containers
+        var self = this;
+        rootDescendants.forEach(function (node) {
+          var _self$splitIntoContai = self.splitIntoContainers(node),
+              newContainer = _self$splitIntoContai.newContainer,
+              newOverlay = _self$splitIntoContai.newOverlay;
 
-        var overlayCSS = {
-          position: 'fixed', overflow: 'hidden', zIndex: 1000,
-          left: 0, right: 0, bottom: 0, top: 0,
-          backgroundColor: 'rgba(0,0,0,0.8)'
-        };
-        var containerCSS = {
-          position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
-          left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
-          backgroundColor: 'white'
-        };
+          containers.push(newContainer);
+          overlays.push(newOverlay);
+        });
+      } else {
+        var _splitIntoContainers = this.splitIntoContainers(rootChild),
+            newContainer = _splitIntoContainers.newContainer,
+            newOverlay = _splitIntoContainers.newOverlay;
 
-        // Set the overlay to hidden (could be changed in the future to provide a print preview).
-        overlayCSS.opacity = 0;
-
-        var newOverlay = createElement('div', { className: 'html2pdf__overlay', style: overlayCSS });
-        var newContainer = createElement('div', { className: 'html2pdf__container', style: containerCSS });
-
-        newOverlay.appendChild(newContainer);
-        document.body.appendChild(newOverlay);
-
-        for (var index = 0; index < elements.length; index++) {
-          // move elements, starting with first, 
-          newContainer.appendChild(elements[index]);
-          // to newContainer until newContainer > 18000px height
-          if (newContainer.clientHeight > 18000) {
-            containers.unshift(newContainer);
-            break;
-          }
-        }
-        // compile all containers into this.props.containers 
-        // as [newContainer, newContainer2, originalContainer]
-        containers.push(root);
-        overlays.push(newOverlay);
-        this.prop.containers = containers;
-        this.prop.overlays = [].concat(overlays, [this.prop.overlay]);
+        containers = newContainer;
+        overlays = newOverlay;
       }
-      // proceed with canvas creation... create canvases
+
+      containers.push(root);
+      this.prop.containers = containers;
+      this.prop.overlays = [].concat(toConsumableArray(overlays), [this.prop.overlay]);
     }
   });
+};
+
+Worker.prototype.splitIntoContainers = function splitIntoContainers(node) {
+  var elements = node.childNodes;
+
+  while (node.clientHeight > 20000) {
+
+    var overlayCSS = {
+      position: 'fixed', overflow: 'hidden', zIndex: 1000,
+      left: 0, right: 0, bottom: 0, top: 0,
+      backgroundColor: 'rgba(0,0,0,0.8)'
+    };
+
+    var containerCSS = {
+      position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
+      left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
+      backgroundColor: 'white'
+    };
+
+    console.log("container CSS:", containerCSS);
+
+    // Set the overlay to hidden (could be changed in the future to provide a print preview).
+    overlayCSS.opacity = 0;
+
+    var newOverlay = createElement('div', { className: 'html2pdf__overlay', style: overlayCSS });
+    var newContainer = createElement('div', { className: 'html2pdf__container', style: containerCSS });
+
+    newOverlay.appendChild(newContainer);
+    document.body.appendChild(newOverlay);
+
+    for (var index = 0; index < elements.length; index++) {
+      // move elements, starting with first, 
+      newContainer.appendChild(elements[index]);
+      // to newContainer until newContainer > 20000px height
+      if (newContainer.clientHeight > 20000) {
+        // containers.unshift(newContainer);
+        break;
+      }
+    }
+
+    // compile all containers into this.props.containers 
+    // as [newContainer, newContainer2, originalContainer]
+    // containers.push(root);
+    // overlays.push(newOverlay);
+    // this.prop.containers = [...containers, this.prop.contianers];
+    // this.prop.overlays = [...overlays, this.prop.overlays, this.prop.overlay];
+  }
+
+  return {
+    newContainer: newContainer,
+    newOverlay: newOverlay
+  };
 };
 
 // Add hyperlink functionality to the PDF creation.

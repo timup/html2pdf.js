@@ -146,54 +146,88 @@ Worker.prototype.toContainer = function toContainer() {
       }
     });
 
-    if (root.clientHeight <= 18000) {
+    if (root.clientHeight <= 20000) {
       return;
     } else {
       // if the container is > 18000px height 
-      var rootChild = this.prop.container.firstElementChild;
-      var elements = rootChild.querySelectorAll("*");
+      var rootChild = root.firstElementChild;
+      var rootDescendants = rootChild.childNodes
       var containers = [];
       var overlays = [];
 
-      while (root.clientHeight > 18000) {
-
-        var overlayCSS = {
-          position: 'fixed', overflow: 'hidden', zIndex: 1000,
-          left: 0, right: 0, bottom: 0, top: 0,
-          backgroundColor: 'rgba(0,0,0,0.8)'
-        };
-        var containerCSS = {
-          position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
-          left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
-          backgroundColor: 'white'
-        };
-
-        // Set the overlay to hidden (could be changed in the future to provide a print preview).
-        overlayCSS.opacity = 0;
-
-        var newOverlay = createElement('div',   { className: 'html2pdf__overlay', style: overlayCSS });
-        var newContainer =  createElement('div', { className: 'html2pdf__container', style: containerCSS });
-        
-        newOverlay.appendChild(newContainer);
-        document.body.appendChild(newOverlay);
-
-        for (let index = 0; index < elements.length; index++) {
-          // move elements, starting with first, 
-          newContainer.appendChild(elements[index]);
-          // to newContainer until newContainer > 18000px height
-          if (newContainer.clientHeight > 18000) {
-            containers.unshift(newContainer);
-            break;
-          }
-        }
-        // compile all containers into this.props.containers 
-        // as [newContainer, newContainer2, originalContainer]
-        containers.push(root);
-        overlays.push(newOverlay);
-        this.prop.containers = containers;
-        this.prop.overlays = [...overlays, this.prop.overlay];
+      if ([...rootDescendants].some(function(node) {
+        return node.clientHeight > 20000;
+      })) {
+        // split child nodes into containers
+        var self = this;
+        rootDescendants.forEach(function(node) {
+          const {newContainer, newOverlay} = self.splitIntoContainers(node);
+          containers.push(newContainer)
+          overlays.push(newOverlay);
+        });
+      } else {
+        const {newContainer, newOverlay} = this.splitIntoContainers(rootChild);
+        containers = newContainer;
+        overlays = newOverlay;
       }
-      // proceed with canvas creation... create canvases
+      
+      containers.push(root);
+      this.prop.containers = containers;
+      this.prop.overlays = [...overlays, this.prop.overlay];
     }
   });
 };
+
+Worker.prototype.splitIntoContainers = function splitIntoContainers(node) {
+  var containers = [];
+  var overlays = [];
+  var elements = node.childNodes;
+
+  while (node.clientHeight > 20000) {
+
+    var overlayCSS = {
+      position: 'fixed', overflow: 'hidden', zIndex: 1000,
+      left: 0, right: 0, bottom: 0, top: 0,
+      backgroundColor: 'rgba(0,0,0,0.8)'
+    };
+
+    var containerCSS = {
+      position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
+      left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
+      backgroundColor: 'white'
+    };
+
+    console.log("container CSS:", containerCSS)
+
+    // Set the overlay to hidden (could be changed in the future to provide a print preview).
+    overlayCSS.opacity = 0;
+
+    var newOverlay = createElement('div',   { className: 'html2pdf__overlay', style: overlayCSS });
+    var newContainer =  createElement('div', { className: 'html2pdf__container', style: containerCSS });
+    
+    newOverlay.appendChild(newContainer);
+    document.body.appendChild(newOverlay);
+
+    for (let index = 0; index < elements.length; index++) {
+      // move elements, starting with first, 
+      newContainer.appendChild(elements[index]);
+      // to newContainer until newContainer > 20000px height
+      if (newContainer.clientHeight > 20000) {
+        // containers.unshift(newContainer);
+        break;
+      }
+    }
+
+    // compile all containers into this.props.containers 
+    // as [newContainer, newContainer2, originalContainer]
+    // containers.push(root);
+    // overlays.push(newOverlay);
+    // this.prop.containers = [...containers, this.prop.contianers];
+    // this.prop.overlays = [...overlays, this.prop.overlays, this.prop.overlay];
+  }
+
+  return {
+    newContainer: newContainer,
+    newOverlay: newOverlay
+  }
+}

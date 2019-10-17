@@ -111,6 +111,7 @@ Worker.prototype.toContainer = function toContainer() {
       left: 0, right: 0, bottom: 0, top: 0,
       backgroundColor: 'rgba(0,0,0,0.8)'
     };
+    console.log("original container CSS width:", this.prop.pageSize.inner.width)
     var containerCSS = {
       position: 'absolute', width: this.prop.pageSize.inner.width + this.prop.pageSize.unit,
       left: 0, right: 0, top: 0, height: 'auto', margin: 'auto',
@@ -147,8 +148,10 @@ Worker.prototype.toCanvas = function toCanvas() {
       return html2canvas(this.prop.container, options);
     } else {
       var canvases = [];
-      for (let index = 0; index < this.prop.containers.length; index++) {
-        var partialCanvas = html2canvas(this.prop.containers[index], options);
+      var cleanContainers = this.prop.containers.filter(function(container){ return container });
+      for (let index = 0; index < cleanContainers.length; index++) {
+        console.log("html2canvas options:", options)
+        var partialCanvas = html2canvas(cleanContainers[index], options);
         canvases.push(partialCanvas)
       }
       return Promise.all(canvases)
@@ -163,7 +166,8 @@ Worker.prototype.toCanvas = function toCanvas() {
       // save to canvases
       this.prop.canvases = canvas;
       //  remove overlays
-      this.prop.overlays.forEach(function(overlay) {
+      var cleanOverlays = this.prop.overlays.filter(function(overlay){ return overlay });
+      cleanOverlays.forEach(function(overlay) {
         overlay.parentNode.removeChild(overlay);
       });
     } else {
